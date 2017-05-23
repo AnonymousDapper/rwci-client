@@ -99,3 +99,7 @@ ENV/
 
 # mypy
 .mypy_cache/
+
+server.py
+settings.json
+user_colors.json
