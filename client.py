@@ -170,7 +170,8 @@ class Handler:
 
     async def _raw_send(self, data):
         try:
-            data = json.dumps(data)
+            if isinstance(data, dict):
+                data = json.dumps(data)
             if self._debug:
                 print("SEND", data)
 
@@ -194,7 +195,7 @@ class Handler:
     async def send_auth(self):
         payload = {
             "type": "auth",
-            "author": self.username,
+            "username": self.username,
             "password": self.password
         }
         await self._raw_send(payload)
@@ -217,12 +218,7 @@ class Handler:
         except Exception as e:
             print(f"{type(e).__name__}: {e}")
 
-    def decode_data(self, raw_data):
-        data = None
-        if isinstance(raw_data, bytes):
-            data = raw_data.decode(encoding="utf-8")
-        elif isinstance(raw_data, str):
-            data = raw_data
+    def decode_data(self, data):
         try:
             data = json.loads(data)
         except:
@@ -268,13 +264,13 @@ class Handler:
     async def process_command(self, text):
         parts = shlex.split(text[1:])
         command_name = parts[0]
-        self.run_command(command_name, text[2 + len(command_name):].strip(), *parts[1:])
+        self.run_command(command_name, text[2 + len(command_name):], *parts[1:])
 
     async def read_input(self):
         while True:
             message = await self.loop.run_in_executor(None, sys.stdin.readline)
             if message.startswith("/"):
-                await self.process_command(message)
+                await self.process_command(message.strip())
             else:
                 await self.send_message(message.strip())
 
@@ -323,18 +319,28 @@ class Handler:
         self.print_server_broadcast(data["message"])
 
     async def on_auth_response(self, data):
-        self.print_direct_message("Server", "Me", data["message"])
+        status = data["success"]
+        registered = data["new_account"]
+
+        if status is True:
+            if registered is True:
+                self.print_local_message("Registered and logged in ok", warning=True)
+            else:
+                self.print_local_message("Logged in ok", success=True)
+        else:
+            self.print_local_message("Login failed", error=True)
 
     async def on_join(self, data):
-        username = data["message"]
+        username = data["username"]
         self.print_user_join(username)
         if username not in self.user_list:
             self.user_list.append(username)
 
     async def on_quit(self, data):
-        self.print_user_quit(data["message"])
+        username = data["username"]
+        self.print_user_quit(username)
         try:
-            self.user_list.remove(data["message"])
+            self.user_list.remove(username)
         except:
             pass
 
