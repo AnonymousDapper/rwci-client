@@ -469,10 +469,12 @@ class Handler:
             self.print_local_message(f"{e.text}")
             self.print_local_message(f"{'^':>{e.offset}}", plain=True)
             self.print_local_message(f"{type(e).__name__}: {e}", plain=True, error=True)
+            return
 
         except Exception as e:
             #return f"{type(e).__name__}: {e}"
             self.print_local_message(f"{type(e).__name__}: {e}", plain=True, warning=True)
+            return
 
         if isawaitable(result):
             result = await result
