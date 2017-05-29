@@ -1,0 +1,5 @@
+Cython
+mistune
+PyQt5
+Quamash
+websockets

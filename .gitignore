@@ -100,6 +100,8 @@ ENV/
 # mypy
 .mypy_cache/
 
-server.py
+.ui
 settings.json
 user_colors.json
+qt_user_colors.json
+.zip

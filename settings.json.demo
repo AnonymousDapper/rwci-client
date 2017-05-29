@@ -1,0 +1,7 @@
+{
+  "blocked_users": [
+  ],
+  "server_ip": "",
+  "server_port": 5000,
+  "should_render_markdown": true
+}
