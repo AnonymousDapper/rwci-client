@@ -41,8 +41,49 @@ class Ui_MainWindow(object):
         self.MessageField.setObjectName("MessageField")
         self.gridLayout.addWidget(self.MessageField, 1, 0, 1, 1)
         self.MessageScroller = QtWidgets.QScrollArea(self.MainWidget)
+        self.MessageScroller.setStyleSheet("QScrollBar:vertical {\n"
+"    background: transparent;\n"
+"    border: transparent;\n"
+"    width: 15px;\n"
+"    margin: 22px 0 22px 0;\n"
+"}\n"
+"\n"
+"QScrollBar::handle:vertical {\n"
+"    background: #00bfa5;\n"
+"    min-height: 20px;\n"
+"}\n"
+"\n"
+"QScrollBar::add-line:vertical {\n"
+"    border: transparent;\n"
+"    background: transparent;\n"
+"    height: 20px;\n"
+"    border-width: 2px 0 0 0;\n"
+"    subcontrol-position: bottom;\n"
+"    subcontrol-origin: margin;\n"
+"}\n"
+"\n"
+"QScrollBar::sub-line:vertical {\n"
+"    border: transparent;\n"
+"    background: transparent;\n"
+"    height: 20px;\n"
+"    border-width: 0 0 2px 0;\n"
+"    subcontrol-position: top;\n"
+"    subcontrol-origin: margin;\n"
+"}\n"
+"\n"
+"QScrollBar::up-arrow:vertical, QScrollBar::down-arrow:vertical {\n"
+"    border: transparent;\n"
+"    width: 9px;\n"
+"    height: 9px;\n"
+"    background: transparent;\n"
+"}\n"
+"\n"
+" QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {\n"
+"     background: #515151;\n"
+" }")
         self.MessageScroller.setFrameShape(QtWidgets.QFrame.NoFrame)
         self.MessageScroller.setFrameShadow(QtWidgets.QFrame.Plain)
+        self.MessageScroller.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
         self.MessageScroller.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.MessageScroller.setWidgetResizable(False)
         self.MessageScroller.setObjectName("MessageScroller")
@@ -58,7 +99,8 @@ class Ui_MainWindow(object):
         font.setPointSize(10)
         self.MessageBrowser.setFont(font)
         self.MessageBrowser.setStyleSheet("color: #EDEDED;\n"
-"background-color: #212121;")
+"background-color: #212121;\n"
+"")
         self.MessageBrowser.setFrameShape(QtWidgets.QFrame.NoFrame)
         self.MessageBrowser.setFrameShadow(QtWidgets.QFrame.Plain)
         self.MessageBrowser.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)

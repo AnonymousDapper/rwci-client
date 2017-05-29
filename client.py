@@ -1,11 +1,16 @@
-import websockets
 import json
 import asyncio
 import sys
 import shlex
-import mistune
 import re
 import os
+
+try:
+    import mistune
+    import websockets
+except ModuleNotFoundError:
+    print("Make sure to install the dependencies in requirements.txt before running the program!")
+    sys.exit(1)
 
 from datetime import datetime
 from inspect import isawaitable
@@ -262,7 +267,10 @@ class Handler:
             print(message)
 
     async def process_command(self, text):
-        parts = shlex.split(text[1:])
+        try:
+            parts = shlex.split(text[1:])
+        except:
+            parts = text[1:].split()
         command_name = parts[0]
         self.run_command(command_name, text[2 + len(command_name):], *parts[1:])
 
@@ -441,7 +449,7 @@ class Handler:
             self.print_local_message(user, plain=True)
 
     async def command_w(self, msg, recipient, *message):
-        if recipient.lower() == self.username.lower():
+        if recipient.lower() == self.username.lower() and self._debug is False:
             self.print_local_message("You can't DM yourself!", error=True)
             return
 

@@ -26,7 +26,7 @@ class Colors:
     blue        = "2196F3"
     light_blue  = "03A9F4"
     cyan        = "00BCD4"
-    teal        = "009688"
+    teal        = "00BFA5"
     green       = "4CAF50"
     light_green = "8BC34A"
     lime        = "CDDC39"
@@ -37,6 +37,8 @@ class Colors:
     brown       = "795548"
     grey        = "9E9E9E"
     blue_grey   = "607D8B"
+
+    dark_grey   = "515151"
 
     black = "212121"
     white = "EDEDED"
@@ -81,3 +83,45 @@ def attr(text, attr_name):
     if hasattr(Text, attr_name):
         return getattr(Text, attr_name).format(text)
     raise ValueError(f"invalid attribute name: {attr_name}")
+
+
+# QScrollBar:vertical {
+#     background: transparent;
+#     border: transparent;
+#     width: 15px;
+#     margin: 22px 0 22px 0;
+# }
+
+# QScrollBar::handle:vertical {
+#     background: #3D5AFE;
+#     min-height: 20px;
+# }
+
+# QScrollBar::add-line:vertical {
+#     border: 2px solid #515151;
+#     background: #515151;
+#     height: 20px;
+#     border-width: 2px 0 0 0;
+#     subcontrol-position: bottom;
+#     subcontrol-origin: margin;
+# }
+
+# QScrollBar::sub-line:vertical {
+#     border: 2px solid #515151;
+#     background: #515151;
+#     height: 20px;
+#     border-width: 0 0 2px 0;
+#     subcontrol-position: top;
+#     subcontrol-origin: margin;
+# }
+
+# QScrollBar::up-arrow:vertical, QScrollBar::down-arrow:vertical {
+#     border: transparent;
+#     width: 9px;
+#     height: 9px;
+#     background: #FF9800;
+# }
+
+#  QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+#      background: #515151;
+#  }

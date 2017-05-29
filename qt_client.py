@@ -11,7 +11,7 @@ try:
     from quamash import QEventLoop
     import websockets
 except ModuleNotFoundError:
-    print("Make sure to install the dependencies in requirements.txt before running the program!")
+    print("Make sure to install the dependencies in qt_requirements.txt before running the program!")
     sys.exit(1)
 
 if os.name == "nt":
@@ -214,11 +214,11 @@ class Client(Ui_MainWindow):
         else:
             fg_color = "cyan"
 
-        text = self.parse_formatting(message)
+        # text = self.parse_formatting(message)
         if plain:
-            response = f"|  {paint(text, fg_color)}"
+            response = f"|  {paint(message, fg_color)}"
         else:
-            response = f"&lt;&lt; {paint(text, fg_color)} &gt;&gt;"
+            response = f"&lt;&lt; {paint(message, fg_color)} &gt;&gt;"
 
         self.add_text(response)
 
@@ -325,7 +325,11 @@ class Client(Ui_MainWindow):
                 self.print_local_message(f"Unknown Packet Type: {data}", plain=True, warning=True)
 
     async def process_command(self, text):
-        parts = shlex.split(text[1:])
+        try:
+            parts = shlex.split(text[1:])
+        except:
+            parts = text[1:].split()
+
         command_name = parts[0]
         self.run_command(command_name, text[2 + len(command_name):], *parts[1:])
 
