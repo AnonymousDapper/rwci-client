@@ -125,16 +125,17 @@ class Client(Ui_MainWindow):
 
     def dispatch(self, event, *args):
         method = "on_" + event
-        if hasattr(self, method):
-            try:
-                asyncio.run_coroutine_threadsafe(self._run_event(method, *args), loop=self.loop)
-            except:
-                pass
-
-    def run_command(self, event, *args):
-        method = "command_" + event
+        if self._debug:
+            self.print_local_message(f"DISP {method}", plain=True)
         if hasattr(self, method):
             asyncio.ensure_future(self._run_event(method, *args), loop=self.loop)
+
+    def run_command(self, event, msg, *args):
+        method = "command_" + event
+        if self._debug:
+            self.print_local_message(f"COMD {method}", plain=True)
+        if hasattr(self, method):
+            asyncio.ensure_future(self._run_event(method, msg, *args), loop=self.loop)
         else:
             self.print_local_message(f"Command '{event}' doesn't exist!", warning=True)
 
