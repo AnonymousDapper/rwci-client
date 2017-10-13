@@ -100,8 +100,10 @@ ENV/
 # mypy
 .mypy_cache/
 
-.ui
+utils/ui/files/MainWindow.ui
 settings.json
 user_colors.json
 qt_user_colors.json
 .zip
+user_db.json
+server.py

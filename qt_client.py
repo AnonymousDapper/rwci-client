@@ -29,6 +29,47 @@ from utils import config
 
 LINK_EXTRACT = re.compile(r"^https?://([^\s/]+)/?")
 
+class TextHistoryHandler(QtWidgets.QWidget):
+    def __init__(self, client_window):
+        QtWidgets.QWidget.__init__(self)
+        self.client_window = client_window
+        self.history = [""]
+        self.history_index = 0
+
+    def add_history(self, text):
+        if self.history[0] != text:
+            self.history.insert(1, text)
+
+    def restore_last_line(self):
+        self.client_window.MessageField.setText(self.history[self.history_index])
+
+        self.client_window.MessageField.setFocus()
+
+    def eventFilter(self, source, event):
+        if source is self.client_window.MessageField and event.type() == QtCore.QEvent.KeyPress:
+            key = event.key()
+
+            if key == QtCore.Qt.Key_Up: # Up arrow
+                if self.history_index < (len(self.history) - 1):
+                    self.history_index += 1
+                    self.restore_last_line()
+
+                print("UP", self.history_index, len(self.history))
+
+                return 1
+
+            elif key == QtCore.Qt.Key_Down: # Down arrow
+                if self.history_index > 0:
+                    self.history_index -= 1
+                    self.restore_last_line()
+
+                print("DOWN", self.history_index, len(self.history))
+
+
+                return 1
+
+        return super().eventFilter(source, event)
+
 class InlineLexer(mistune.InlineLexer):
     def enable_underscore(self):
         self.rules.underscore = re.compile(
@@ -97,9 +138,10 @@ class Renderer(mistune.Renderer):
 
 class Client(Ui_MainWindow):
     def __init__(self, dialog, username, password):
-        self._debug = False
+        self._debug = any("debug" in arg.lower() for arg in sys.argv)
         self.username = username
         self.password = password
+        self.mute = False
         self.user_list = []
         self.loop = asyncio.get_event_loop()
         self.user_colors = config.Config("qt_user_colors.json")
@@ -113,9 +155,13 @@ class Client(Ui_MainWindow):
         lexer.enable_underscore()
         self.markdown = mistune.Markdown(renderer, inline=lexer)
 
+        self.history_handler = TextHistoryHandler(self)
+
         Ui_MainWindow.__init__(self)
         self.setupUi(dialog)
         dialog.setWindowIcon(QtGui.QIcon("./utils/ui/files/icon.png"))
+
+        self.MessageField.installEventFilter(self.history_handler)
 
         self.MessageField.setFocus()
 
@@ -159,7 +205,9 @@ class Client(Ui_MainWindow):
     # Print Messages
     def add_text(self, text):
         text_field = self.MessageBrowser
-        text_field.append(text)
+
+        if not self.mute:
+            text_field.append(text)
 
     def clear(self):
         self.MessageBrowser.clear()
@@ -205,7 +253,7 @@ class Client(Ui_MainWindow):
 
     def print_local_message(self, message, plain=False, **kwargs):
         if kwargs.get("error"):
-            fg_color = "light_red"
+            fg_color = "red"
         elif kwargs.get("warning"):
             fg_color = "orange"
         elif kwargs.get("success"):
@@ -276,7 +324,7 @@ class Client(Ui_MainWindow):
             data = await self.ws.recv()
             await self.process_data(data)
         except websockets.exceptions.ConnectionClosed as e:
-            self.print_local_message(f"Server unexpectedly closed", error=True)
+            self.print_local_message("Server unexpectedly closed", error=True)
             await self.close()
 
     def decode_data(self, data):
@@ -337,6 +385,9 @@ class Client(Ui_MainWindow):
     # Connections
     def read_input(self):
         text = self.MessageField.text()
+
+        self.history_handler.add_history(text)
+
         if text.startswith("/"):
             asyncio.run_coroutine_threadsafe(self.process_command(text), self.loop)
         else:
@@ -350,7 +401,6 @@ class Client(Ui_MainWindow):
             await self.ws.close()
         except:
             pass
-
         # sys.exit()
 
     async def connect(self):
@@ -390,6 +440,7 @@ class Client(Ui_MainWindow):
                 self.print_local_message("Logged in ok", success=True)
         else:
             self.print_local_message("Login failed", error=True)
+            self.mute = True
 
     async def on_join(self, data):
         username = data["username"]
@@ -500,11 +551,12 @@ class Client(Ui_MainWindow):
             self.print_local_message(user, plain=True)
 
     async def command_w(self, msg, recipient, *message):
-        if recipient.lower() == self.username.lower() and self._debug is False:
+        username = self.find_user(recipient)
+
+        if username.lower() == self.username.lower() and self._debug is False:
             self.print_local_message("You can't DM yourself!", error=True)
             return
 
-        username = self.find_user(recipient)
         if username is None:
             self.print_local_message("That user isn't online", error=True)
             return
@@ -524,14 +576,12 @@ class Client(Ui_MainWindow):
             result = eval(precompiled)
 
         except SyntaxError as e:
-            #return f"{e.text}\n{'^':>{e.offset}}\n{type(e).__name__}: {e}"
             self.print_local_message(f"{e.text}")
             self.print_local_message(f"{'^':>{e.offset}}", plain=True)
             self.print_local_message(f"{type(e).__name__}: {e}", plain=True, error=True)
             return
 
         except Exception as e:
-            #return f"{type(e).__name__}: {e}"
             self.print_local_message(f"{type(e).__name__}: {e}", plain=True, warning=True)
             return
 
@@ -555,13 +605,11 @@ class Client(Ui_MainWindow):
         self.print_local_message("Sent!")
 
     async def command_debug(self, msg, *args):
+        self._debug = not self._debug
         if self._debug:
-            self._debug = False
-            self.print_local_message("Debug mode disabled")
-        else:
-            self._debug = True
             self.print_local_message("Debug mode enabled")
-
+        else:
+            self.print_local_message("Debug mode disabled")
 
 
 username = input("Username: ")
