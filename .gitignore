@@ -101,6 +101,7 @@ ENV/
 .mypy_cache/
 
 utils/ui/files/MainWindow.ui
+utils/ui/files/MainWindow_Channels.ui
 settings.json
 user_colors.json
 qt_user_colors.json

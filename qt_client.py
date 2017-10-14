@@ -22,7 +22,7 @@ from datetime import datetime
 from inspect import isawaitable
 from getpass import getpass
 
-from utils.ui.main_window import Ui_MainWindow
+from utils.ui.main_window_channels import Ui_MainWindow
 from utils.html_colors import paint, back, attr
 from utils import time
 from utils import config
@@ -204,7 +204,7 @@ class Client(Ui_MainWindow):
 
     # Print Messages
     def add_text(self, text):
-        text_field = self.MessageBrowser
+        text_field = self.MessageView
 
         if not self.mute:
             text_field.append(text)
