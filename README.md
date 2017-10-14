@@ -90,3 +90,9 @@ Sends given raw data directly to the server.
 
 Toggles debug mode. You can only send DMs to yourself with debug mode enabled.
 `/debug`
+
+# Self-hosted Server
+
+If you would like to host a server, simply clone/download this repository and grab the two files from [this gist](https://gist.github.com/AnonymousDapper/e1658328a915a2a5e2b6f5820a510222).
+
+Run `server.py` using Python 3.6 and enjoy
