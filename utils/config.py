@@ -8,6 +8,7 @@ class Config:
 		self.name = name
 		self.object_hook = options.pop('object_hook', None)
 		self.encoder = options.pop('encoder', None)
+		self.default = options.pop('default', {})
 		self.loop = options.pop('loop', asyncio.get_event_loop())
 		if options.pop('load_later', False):
 			self.loop.create_task(self.load())
@@ -18,8 +19,9 @@ class Config:
 		try:
 			with open(self.name, 'r', encoding="utf-8") as f:
 				self._db = json.load(f, object_hook=self.object_hook)
-		except FileNotFoundError:
-			self._db = {}
+		except (FileNotFoundError, json.decoder.JSONDecodeError):
+			self._db = self.default
+			self._dump()
 
 	async def load(self):
 		await self.loop.run_in_executor(None, self.load_from_file)

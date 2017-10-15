@@ -4,6 +4,7 @@ import sys
 import shlex
 import re
 import os
+import socket
 
 try:
     import mistune
@@ -16,18 +17,20 @@ except ModuleNotFoundError:
 
 if os.name == "nt":
     import ctypes
-    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(u"Dapper.RWCI.Client.01")
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(u"Dapper.RWCI.Client.02")
 
 from datetime import datetime
 from inspect import isawaitable
 from getpass import getpass
 
 from utils.ui.main_window_channels import Ui_MainWindow
-from utils.html_colors import paint, back, attr
+from utils.ui.login_widget import Ui_LoginWindow
+
+from utils.html_colors import paint, attr
 from utils import time
 from utils import config
 
-LINK_EXTRACT = re.compile(r"^https?://([^\s/]+)/?")
+LINK_EXTRACT = re.compile(r"^(https?|s?ftp|wss?:?)://([^\s/]+)/?")
 
 class TextHistoryHandler(QtWidgets.QWidget):
     def __init__(self, client_window):
@@ -54,17 +57,12 @@ class TextHistoryHandler(QtWidgets.QWidget):
                     self.history_index += 1
                     self.restore_last_line()
 
-                print("UP", self.history_index, len(self.history))
-
                 return 1
 
             elif key == QtCore.Qt.Key_Down: # Down arrow
                 if self.history_index > 0:
                     self.history_index -= 1
                     self.restore_last_line()
-
-                print("DOWN", self.history_index, len(self.history))
-
 
                 return 1
 
@@ -111,21 +109,18 @@ class Renderer(mistune.Renderer):
     def block_html(self, html):
         return html
 
-    # def block_quote(self, text):
-    #     return f">{text}"
-
-    def auto_link(self, link, is_email=False):
+    def autolink(self, link, is_email=False):
         if is_email:
             return link
 
-        return f"<a href={link} style=\"text-decoration: none\"><span style=\"color: #2979FF; text-decoration: none\">{link}</span></a>"
+        return f"<a href={link} style=\"text-decoration: none\"><span style=\"color: #2196F3; text-decoration: none\">{link}</span></a>"
 
     def link(self, link, title, text):
         link_info = LINK_EXTRACT.match(link)
         if link_info is None:
             return link
 
-        return f"<a href={link} style=\"text-decoration: none\"><span style=\"color: #03A9F4; text-decoration: none\">{text}</span><span style=\"color: #BDBDBD; text-decoration: none\"> ({link_info.group(1)})</span></a>"
+        return f"<a href={link} style=\"text-decoration: none\"><span style=\"color: #2196F3; text-decoration: none\">{text}</span><span style=\"color: #BDBDBD; text-decoration: none\"> ({link_info.group(2)})</span></a>"
 
     def codespan(self, text):
         return paint(text, "a_green")
@@ -134,25 +129,27 @@ class Renderer(mistune.Renderer):
         if title:
             return self.link(src, None, title)
         else:
-            return self.auto_link(src)
+            return self.url_link(src)
 
 class Client(Ui_MainWindow):
-    def __init__(self, dialog, username, password):
+    def __init__(self, dialog, username, password, settings):
         self._debug = any("debug" in arg.lower() for arg in sys.argv)
         self.username = username
         self.password = password
         self.mute = False
         self.user_list = []
         self.loop = asyncio.get_event_loop()
-        self.user_colors = config.Config("qt_user_colors.json")
-        self.settings = config.Config("settings.json")
+        self.user_colors = config.Config("qt_user_colors.json",)
+        self.settings = settings
 
         self.ip = self.settings.get("server_ip")
         self.port = self.settings.get("server_port")
 
         renderer = Renderer()
         lexer = InlineLexer(renderer)
+
         lexer.enable_underscore()
+
         self.markdown = mistune.Markdown(renderer, inline=lexer)
 
         self.history_handler = TextHistoryHandler(self)
@@ -160,6 +157,8 @@ class Client(Ui_MainWindow):
         Ui_MainWindow.__init__(self)
         self.setupUi(dialog)
         dialog.setWindowIcon(QtGui.QIcon("./utils/ui/files/icon.png"))
+
+        self.MainWindow = dialog
 
         self.MessageField.installEventFilter(self.history_handler)
 
@@ -223,12 +222,11 @@ class Client(Ui_MainWindow):
         if low_author in self.settings.get("blocked_users", []):
             return
 
-        fg_color = self.user_colors.get(low_author, {}).get("fg", "white")
-        bg_color = self.user_colors.get(low_author, {}).get("bg", "black")
+        color = self.user_colors.get(low_author, "white")
         text = self.parse_formatting(message)
         timestamp = datetime.now().strftime(time.time_format)
 
-        self.add_text(f"[{paint(timestamp, 'red')}] {paint(back(author, bg_color), fg_color)}: {text}")
+        self.add_text(f"[{paint(timestamp, 'red')}] {paint(author, color)}: {text}")
 
     def print_server_broadcast(self, message):
         fg_color = "a_deep_purple"
@@ -394,18 +392,24 @@ class Client(Ui_MainWindow):
             asyncio.run_coroutine_threadsafe(self.send_message(text), self.loop)
         self.MessageField.clear()
 
-    async def close(self):
+    async def close(self, complete=False):
         self.connect_task.cancel()
-        #self.loop.stop()
         try:
             await self.ws.close()
         except:
             pass
-        # sys.exit()
+
+        if complete:
+            self.MainWindow.close()
+            sys.exit()
 
     async def connect(self):
         self.print_local_message("Attempting connection..", plain=True)
-        self.ws = await websockets.client.connect(f"ws://{self.ip}:{self.port}")
+        try:
+            self.ws = await websockets.client.connect(f"ws://{self.ip}:{self.port}")
+        except socket.gaierror:
+            self.print_local_message(f"Unable to resolve {self.ip}")
+            await self.close()
 
         try:
             await self.send_auth()
@@ -461,56 +465,33 @@ class Client(Ui_MainWindow):
         self.user_list = data["users"]
 
     # Commands
-    async def command_fgcolor(self, msg, color_name, *username):
-        username = self.find_user(" ".join(username))
+    async def command_color(self, msg, color_name, *user_name):
+        username = self.find_user(" ".join(user_name))
 
         if username is None:
-            self.print_local_message("That user isn't online", error=True)
+            self.print_local_message(f"'{user_name} isn't online", error=True)
             return
 
         user = username.lower()
 
-        if user in self.user_colors:
-            user_data = self.user_colors.get(user)
-            user_data["fg"] = color_name
-            await self.user_colors.put(user, user_data)
-        else:
-            await self.user_colors.put(user, dict(fg=color_name))
+        await self.user_colors.put(user, color_name)
 
-        self.print_local_message(f"Set foreground color for {username} to {color_name}", success=True)
+        self.print_local_message(f"Set color for {username} to {color_name}", success=True)
 
-    async def command_bgcolor(self, msg, color_name, *username):
-        username = self.find_user(" ".join(username))
+    async def command_clear_color(self, user_name, *args):
+        username = self.find_user(user_name)
 
         if username is None:
-            self.print_local_message("That user isn't online", error=True)
-            return
-
-        user = username.lower()
-
-        if user in self.user_colors:
-            user_data = self.user_colors.get(user)
-            user_data["bg"] = color_name
-            await self.user_colors.put(user, user_data)
-        else:
-            await self.user_colors.put(user, dict(bg=color_name))
-
-        self.print_local_message(f"Set background color for {username} to {color_name}", success=True)
-
-    async def command_clear_color(self, username, *args):
-        username = self.find_user(username)
-
-        if username is None:
-            self.print_local_message("That user isn't online", error=True)
+            self.print_local_message(f"'{user_name}' isn't online", error=True)
             return
 
         user = username.lower()
 
         if user in self.user_colors:
             await self.user_colors.remove(user)
-            self.print_local_message(f"Removed colors for {username}", success=True)
+            self.print_local_message(f"Removed color for {username}", success=True)
         else:
-            self.print_local_message(f"No colors set for {username}", warning=True)
+            self.print_local_message(f"No color set for {username}", warning=True)
 
     async def command_me(self, msg, *args):
         await self.send_message(f"*{msg}*")
@@ -519,7 +500,7 @@ class Client(Ui_MainWindow):
         if quit_message != "":
             await self.send_message(quit_message)
         self.print_local_message("Exited", plain=True)
-        await self.close()
+        await self.close(complete=True)
 
     async def command_block(self, username, *args):
         username = self.find_user(" ".join(username))
@@ -611,17 +592,65 @@ class Client(Ui_MainWindow):
         else:
             self.print_local_message("Debug mode disabled")
 
+class LoginHandler(Ui_LoginWindow):
+    def __init__(self, dialog):
+        self.settings = config.Config("settings.json", default={"blocked_users": [], "server_ip": "", "server_port": "", "should_render_markdown": True})
+        self.window = dialog
 
-username = input("Username: ")
-password = getpass("Password: ")
+        Ui_LoginWindow.__init__(self)
+        self.setupUi(dialog)
+        dialog.setWindowIcon(QtGui.QIcon("./utils/ui/files/icon.png"))
+
+        server_ip = self.settings.get("server_ip")
+        server_port = self.settings.get("server_port")
+        do_markdown = self.settings.get("should_render_markdown")
+
+        if server_ip:
+            self.AddressField.setText(server_ip)
+
+        if server_port:
+            self.PortField.setText(server_port)
+
+        if isinstance(do_markdown, bool):
+            self.MarkdownCheck.setChecked(do_markdown)
+        else:
+            do_markdown = True
+            self.MarkdownCheck.setChecked(True)
+
+        self.LoginButton.clicked.connect(self.validate_input)
+
+    def validate_input(self):
+        self.ErrorText.setText("")
+
+        try:
+            socket.getaddrinfo(self.AddressField.text(), self.PortField.text())
+        except socket.gaierror:
+            self.ErrorText.setText("IP address could not be resolved")
+            return
+
+        try:
+            port = int(self.PortField.text())
+            assert(port <= 65535 and port >= 1)
+        except ValueError:
+            self.ErrorText.setText("Port is not an integer")
+            return
+
+        except AssertionError:
+            self.ErrorText.setText("Port is not a valid port number")
+
+
+
 
 app = QtWidgets.QApplication(sys.argv)
 loop = QEventLoop(app)
 asyncio.set_event_loop(loop)
 window = QtWidgets.QMainWindow()
 
-handler = Client(window, username, password)
-window.setWindowTitle(f"RWCI Client - {username}")
+login_handler = LoginHandler(window)
+window.setWindowTitle("RWCI Login")
+
+#handler = Client(window, username, password, settings)
+#window.setWindowTitle(f"RWCI Client - {username}")
 
 window.show()
 with loop:

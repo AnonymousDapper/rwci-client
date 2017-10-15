@@ -93,13 +93,13 @@ def attr(text, attr_name):
 # }
 
 # QScrollBar::handle:vertical {
-#     background: #3D5AFE;
+#     background: #00bfa5;
 #     min-height: 20px;
 # }
 
 # QScrollBar::add-line:vertical {
-#     border: 2px solid #515151;
-#     background: #515151;
+#     border: transparent;
+#     background: transparent;
 #     height: 20px;
 #     border-width: 2px 0 0 0;
 #     subcontrol-position: bottom;
@@ -107,8 +107,8 @@ def attr(text, attr_name):
 # }
 
 # QScrollBar::sub-line:vertical {
-#     border: 2px solid #515151;
-#     background: #515151;
+#     border: transparent;
+#     background: transparent;
 #     height: 20px;
 #     border-width: 0 0 2px 0;
 #     subcontrol-position: top;
@@ -119,7 +119,7 @@ def attr(text, attr_name):
 #     border: transparent;
 #     width: 9px;
 #     height: 9px;
-#     background: #FF9800;
+#     background: transparent;
 # }
 
 #  QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
