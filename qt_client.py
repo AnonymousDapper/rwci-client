@@ -30,6 +30,14 @@ from utils.html_colors import paint, attr
 from utils import time
 from utils import config
 
+BLANK_HTML = '''
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0//EN" "http://www.w3.org/TR/REC-html40/strict.dtd">
+<html><head><meta name="qrichtext" content="1" /><style type="text/css">
+p, li { white-space: pre-wrap; }
+</style></head><body style=" font-family:'Consolas'; font-size:10pt; font-weight:400; font-style:normal;">
+<p style="-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"><br /></p></body></html>
+'''
+
 LINK_EXTRACT = re.compile(r"^(https?|s?ftp|wss?:?)://([^\s/]+)/?")
 
 class TextHistoryHandler(QtWidgets.QWidget):
@@ -138,6 +146,10 @@ class Client(Ui_MainWindow):
         self.password = password
         self.mute = False
         self.user_list = []
+        self.channel_list = {}
+        self.active_channel = ""
+        self.default_channel = ""
+
         self.loop = asyncio.get_event_loop()
         self.user_colors = config.Config("qt_user_colors.json",)
         self.settings = settings
@@ -195,18 +207,50 @@ class Client(Ui_MainWindow):
             if user[:len(name)].lower().strip() == name.lower().strip():
                 return user
 
+    def find_channel(self, name):
+        for channel in list(self.channel_list.keys()):
+            if channel[:len(name)].lower().strip() == name.lower().strip():
+                return channel
+
     def parse_formatting(self, text):
         if self.settings.get("should_render_markdown") is True:
             return self.markdown(text)
         else:
             return text
 
-    # Print Messages
-    def add_text(self, text):
-        text_field = self.MessageView
+    def update_view(self):
+        self.MessageView.setHtml(self.channel_list[self.active_channel])
 
-        if not self.mute:
-            text_field.append(text)
+    # Print Messages
+    def add_text(self, text, channel=""):
+        if len(self.channel_list) == 0:
+            self.MessageView.append(text)
+
+        else:
+            if not self.mute:
+                if channel:
+                    self.channel_list[channel] = self.channel_list[channel] + "<br />" + text
+                else:
+                    for channel in self.channel_list:
+                        self.channel_list[channel] = self.channel_list[channel] + "<br />" + text
+
+            self.update_view()
+
+    # Update channel list
+    def update_channels(self):
+        channel_str = "[==] Channels [==]<br /><br />"
+
+        channel_str += "<br />".join(('> ' + f"# {paint(channel_name, 'green')}") if channel_name == self.active_channel else f"# {channel_name}" for channel_name in list(self.channel_list.keys()))
+
+        self.ChannelView.setHtml(channel_str)
+
+    # Update user list
+    def update_users(self):
+        user_str = "&lt;-&gt; Online Users &lt;-&gt;<br /><br />"
+
+        user_str += "<br />".join(paint(user_name, self.user_colors.get(user_name.lower(), "white")) for user_name in self.user_list)
+
+        self.OnlineUsersView.setHtml(user_str)
 
     def clear(self):
         self.MessageBrowser.clear()
@@ -217,7 +261,7 @@ class Client(Ui_MainWindow):
         else:
             self.MessageScroller.ensureVisible(0, 123456789)
 
-    def print_player_message(self, message, author):
+    def print_player_message(self, message, author, channel):
         low_author = author.lower()
         if low_author in self.settings.get("blocked_users", []):
             return
@@ -226,7 +270,7 @@ class Client(Ui_MainWindow):
         text = self.parse_formatting(message)
         timestamp = datetime.now().strftime(time.time_format)
 
-        self.add_text(f"[{paint(timestamp, 'red')}] {paint(author, color)}: {text}")
+        self.add_text(f"[{paint(timestamp, 'red')}] {paint(author, color)}: {text}", channel)
 
     def print_server_broadcast(self, message):
         fg_color = "a_deep_purple"
@@ -288,7 +332,8 @@ class Client(Ui_MainWindow):
 
         payload = {
             "type": "message",
-            "message": message
+            "message": message,
+            "channel": self.active_channel
         }
         await self._raw_send(payload)
 
@@ -367,6 +412,18 @@ class Client(Ui_MainWindow):
         elif packet_type == "typing":
             self.dispatch("typing", message)
 
+        elif packet_type == "channel_list":
+            self.dispatch("channel_list", message)
+
+        elif packet_type == "default_channel":
+            self.dispatch("default_channel", message)
+
+        elif packet_type == "channel_create":
+            self.dispatch("channel_create", message)
+
+        elif packet_type == "channel_delete":
+            self.dispatch("channel_delete", message)
+
         else:
             if self._debug:
                 self.print_local_message(f"Unknown Packet Type: {data}", plain=True, warning=True)
@@ -428,7 +485,7 @@ class Client(Ui_MainWindow):
 
     # Dispatcher Events
     async def on_message(self, data):
-        self.print_player_message(data["message"], data["author"])
+        self.print_player_message(data["message"], data["author"], data["channel"])
 
     async def on_broadcast(self, data):
         self.print_server_broadcast(data["message"])
@@ -452,17 +509,47 @@ class Client(Ui_MainWindow):
         if username not in self.user_list:
             self.user_list.append(username)
 
+            self.update_users()
+
     async def on_quit(self, data):
         username = data["username"]
         self.print_user_quit(username)
         if username in self.user_list:
             self.user_list.remove(username)
 
+            self.update_users()
+
     async def on_direct_message(self, data):
         self.print_direct_message(data["author"], "Me", data["message"])
 
     async def on_user_list(self, data):
         self.user_list = data["users"]
+
+        self.update_users()
+
+    async def on_channel_list(self, data):
+        for channel_name in data["channels"]:
+            self.channel_list[channel_name] = BLANK_HTML
+
+    async def on_default_channel(self, data):
+        self.active_channel = data["channel"]
+        self.default_channel = data["channel"]
+
+        self.update_channels()
+        self.update_view()
+
+    async def on_channel_create(self, data):
+        self.channel_list[data["channel"]] = BLANK_HTML
+
+        self.update_channels()
+
+    async def on_channel_delete(self, data):
+        if self.active_channel == data["channel"]:
+            self.active_channel = self.default_channel
+
+        del self.channel_list[data["channel"]]
+
+        self.update_channels()
 
     # Commands
     async def command_color(self, msg, color_name, *user_name):
@@ -592,6 +679,19 @@ class Client(Ui_MainWindow):
         else:
             self.print_local_message("Debug mode disabled")
 
+    async def command_join(self, channel_name, *args):
+        channel = self.find_channel(channel_name)
+
+        if channel is None or channel not in self.channel_list:
+            self.print_local_message("That channel doesn't exist", error=True)
+            return
+
+        self.active_channel = channel
+        self.print_local_message(f"Joined '{channel}'", plain=True, success=True)
+
+        self.update_channels()
+        self.update_view()
+
 class LoginHandler(Ui_LoginWindow):
     def __init__(self, dialog):
         self.settings = config.Config("settings.json", default={"blocked_users": [], "server_ip": "", "server_port": "", "should_render_markdown": True})
@@ -622,14 +722,17 @@ class LoginHandler(Ui_LoginWindow):
     def validate_input(self):
         self.ErrorText.setText("")
 
+        server_ip = self.AddressField.text()
+        server_port = self.PortField.text()
+
         try:
-            socket.getaddrinfo(self.AddressField.text(), self.PortField.text())
+            socket.getaddrinfo(server_ip, server_port)
         except socket.gaierror:
             self.ErrorText.setText("IP address could not be resolved")
             return
 
         try:
-            port = int(self.PortField.text())
+            port = int(server_port)
             assert(port <= 65535 and port >= 1)
         except ValueError:
             self.ErrorText.setText("Port is not an integer")
@@ -638,8 +741,25 @@ class LoginHandler(Ui_LoginWindow):
         except AssertionError:
             self.ErrorText.setText("Port is not a valid port number")
 
+        username = self.UsernameField.text()
+        password = self.PasswordField.text()
 
+        if (len(username) > 32) or (len(password) > 32):
+            self.ErrorText.setText("Usernames and passwords are limited to 32 characters")
 
+        self.settings._db["server_ip"] = server_ip
+        self.settings._db["server_port"] = server_port
+        self.settings._db["should_render_markdown"] = self.MarkdownCheck.isChecked()
+        self.settings._dump()
+
+        self.window.close()
+
+        window = QtWidgets.QMainWindow()
+
+        client = Client(window, username, password, self.settings)
+        window.setWindowTitle(f"RWCI Client - {username}")
+
+        window.show()
 
 app = QtWidgets.QApplication(sys.argv)
 loop = QEventLoop(app)
