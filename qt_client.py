@@ -38,6 +38,49 @@ p, li { white-space: pre-wrap; }
 <p style="-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"><br /></p></body></html>
 '''
 
+SCROLLBAR_STYLE = '''
+QScrollBar:vertical {
+    background: transparent;
+    border: transparent;
+    width: 15px;
+    margin: 22px 0 22px 0;
+}
+
+QScrollBar::handle:vertical {
+    background: #00bfa5;
+    min-height: 20px;
+}
+
+QScrollBar::add-line:vertical {
+    border: transparent;
+    background: transparent;
+    height: 20px;
+    border-width: 2px 0 0 0;
+    subcontrol-position: bottom;
+    subcontrol-origin: margin;
+}
+
+QScrollBar::sub-line:vertical {
+    border: transparent;
+    background: transparent;
+    height: 20px;
+    border-width: 0 0 2px 0;
+    subcontrol-position: top;
+    subcontrol-origin: margin;
+}
+
+QScrollBar::up-arrow:vertical, QScrollBar::down-arrow:vertical {
+    border: transparent;
+    width: 9px;
+    height: 9px;
+    background: transparent;
+}
+
+ QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+     background: #515151;
+ }
+ '''
+
 LINK_EXTRACT = re.compile(r"^(https?|s?ftp|wss?:?)://([^\s/]+)/?")
 
 class TextHistoryHandler(QtWidgets.QWidget):
@@ -179,6 +222,10 @@ class Client(Ui_MainWindow):
 
         self.MessageField.returnPressed.connect(self.read_input)
 
+        self.MessageView.verticalScrollBar().setStyleSheet(SCROLLBAR_STYLE)
+        self.ChannelView.verticalScrollBar().setStyleSheet(SCROLLBAR_STYLE)
+        self.OnlineUsersView.verticalScrollBar().setStyleSheet(SCROLLBAR_STYLE)
+
         self.connect_task = self.loop.create_task(self.connect())
 
     def dispatch(self, event, *args):
@@ -222,6 +269,8 @@ class Client(Ui_MainWindow):
     def update_view(self):
         self.MessageView.setHtml(self.channel_list[self.active_channel])
 
+        self.scroll_messages()
+
     # Print Messages
     def add_text(self, text, channel=""):
         if len(self.channel_list) == 0:
@@ -260,7 +309,12 @@ class Client(Ui_MainWindow):
         if up:
             pass
         else:
-            self.MessageScroller.ensureVisible(0, 123456789)
+            scrollbar = self.MessageView.verticalScrollBar()
+
+            print(scrollbar.minimum(), scrollbar.maximum())
+
+            scrollbar.setValue(scrollbar.maximum())
+        #self.MessageScroller.verticalScrollBar().setValue(self.MessageScroller.verticalScrollBar().maximum())
 
     def print_player_message(self, message, author, channel):
         low_author = author.lower()
