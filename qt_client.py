@@ -306,15 +306,11 @@ class Client(Ui_MainWindow):
         self.MessageBrowser.clear()
 
     def scroll_messages(self, up=False):
+        scrollbar = self.MessageView.verticalScrollBar()
         if up:
-            pass
+            scrollbar.setValue(scrollbar.minimum())
         else:
-            scrollbar = self.MessageView.verticalScrollBar()
-
-            print(scrollbar.minimum(), scrollbar.maximum())
-
             scrollbar.setValue(scrollbar.maximum())
-        #self.MessageScroller.verticalScrollBar().setValue(self.MessageScroller.verticalScrollBar().maximum())
 
     def print_player_message(self, message, author, channel):
         low_author = author.lower()
@@ -585,7 +581,7 @@ class Client(Ui_MainWindow):
 
     async def on_channel_list(self, data):
         for channel_name in data["channels"]:
-            self.channel_list[channel_name] = BLANK_HTML
+            self.channel_list[channel_name] = self.MessageView.toHtml()
 
     async def on_default_channel(self, data):
         self.active_channel = data["channel"]
@@ -829,9 +825,6 @@ window = QtWidgets.QMainWindow()
 
 login_handler = LoginHandler(window)
 window.setWindowTitle("RWCI Login")
-
-#handler = Client(window, username, password, settings)
-#window.setWindowTitle(f"RWCI Client - {username}")
 
 window.show()
 with loop:
