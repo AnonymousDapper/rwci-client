@@ -1,40 +1,25 @@
 # rwci-client
 Python 3.6 client for the RWCI server
 
-This is a custom IRC-style client for the RWCI communication protocol (detailed [here](https://gist.github.com/SpoopySaitama/33f45f7bf27151542330ce3a67658ba0) and [here](https://drzach-demo.readthedocs.io/en/latest/netscape-chat/information/)).
+This is a custom IRC-style client for the RWCI communication protocol (detailed [here](https://gist.github.com/AnonymousDapper/33f45f7bf27151542330ce3a67658ba0)).
 
 # Setup And First Run
 
-Remove the `demo` extension from the json files. (Or create new files with the same structure)
+You don't need to do anything besides make sure the file is there and you've installed the dependencies.
 
-In `settings.json`, change the `"server_ip": "",` line to include the server's IP address in quotes.
-
-Once that's done, you can start the client and login!
-
-`qt_client.py` runs in a GUI, is basically a cleaner version of the console client.
-`client.py` runs in the console and can run on termux on Android devices.
+To install the dependencies, run `pip install -r qt_requirements.txt`
 
 # Commands
 
-## Foreground Color
+## Text Color
 
-Changes the foreground color for a given user.
-`/fgcolor <color> <user>`
-
-Examples:
-`/fgcolor green chaten`
-
-`/fgcolor a_deep_orange cyber`
-
-## Background Color
-
-Changes the background color for a given user.
-`/bgcolor <color> <user>`
+Changes the text color for a given user.
+`/color <color> <user>`
 
 Examples:
-`/bgcolor white Nick`
+`/color green chaten`
 
-`/bgcolor black zachary`
+`/color a_deep_orange cyber`
 
 ## Clear Colors
 
@@ -71,6 +56,8 @@ Shows who is online.
 Sends a message directly to another user.
 `/w <user> <msg>`
 
+(You can simply type the first few letters of their name and hit enter, the command will find them anyway)
+
 ## Code Eval
 
 Runs python code directly in the chat window.
@@ -90,6 +77,18 @@ Sends given raw data directly to the server.
 
 Toggles debug mode. You can only send DMs to yourself with debug mode enabled.
 `/debug`
+
+## Join Channel
+
+Join a chat channel. All messages are saved corresponding to their channels, so you can still get messages for other channels.
+`/join <channel>`
+
+(You can simply type the first few letters of the channel name and hit enter, the command will find it anyway)
+
+## Quick Reply
+
+Quickly reply to the last person to send you a DM.
+`/r <msg>`
 
 # Self-hosted Server
 

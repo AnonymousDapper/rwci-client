@@ -149,6 +149,7 @@ class Client(Ui_MainWindow):
         self.channel_list = {}
         self.active_channel = ""
         self.default_channel = ""
+        self.last_dm = ""
 
         self.loop = asyncio.get_event_loop()
         self.user_colors = config.Config("qt_user_colors.json",)
@@ -520,6 +521,7 @@ class Client(Ui_MainWindow):
             self.update_users()
 
     async def on_direct_message(self, data):
+        self.last_dm = data["author"]
         self.print_direct_message(data["author"], "Me", data["message"])
 
     async def on_user_list(self, data):
@@ -687,10 +689,15 @@ class Client(Ui_MainWindow):
             return
 
         self.active_channel = channel
-        self.print_local_message(f"Joined '{channel}'", plain=True, success=True)
+        self.print_local_message(f"Joined #{channel}", plain=True, success=True)
 
         self.update_channels()
         self.update_view()
+
+    async def command_r(self, message, *args):
+        if self.last_dm in self.user_list:
+            await self.send_direct_message(self.last_dm, message)
+            self.print_direct_message("Me", self.last_dm, message)
 
 class LoginHandler(Ui_LoginWindow):
     def __init__(self, dialog):
