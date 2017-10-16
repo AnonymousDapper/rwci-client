@@ -311,7 +311,7 @@ class Client(Ui_MainWindow):
             scrollbar.setValue(scrollbar.minimum())
         else:
             scrollbar = self.MessageView.verticalScrollBar()
-            
+
             scrollbar.setValue(scrollbar.maximum())
 
     def print_player_message(self, message, author, channel):
@@ -378,15 +378,14 @@ class Client(Ui_MainWindow):
             await self.close()
 
     async def send_message(self, message):
-        if message == "" or message is None:
-            return
+        if message:
 
-        payload = {
-            "type": "message",
-            "message": message,
-            "channel": self.active_channel
-        }
-        await self._raw_send(payload)
+            payload = {
+                "type": "message",
+                "message": message,
+                "channel": self.active_channel
+            }
+            await self._raw_send(payload)
 
     async def send_auth(self):
         payload = {
@@ -397,15 +396,14 @@ class Client(Ui_MainWindow):
         await self._raw_send(payload)
 
     async def send_direct_message(self, recipient, message):
-        if message == "" or message is None:
-            return
+        if message:
 
-        payload = {
-            "type": "direct_message",
-            "recipient": recipient,
-            "message": message
-        }
-        await self._raw_send(payload)
+            payload = {
+                "type": "direct_message",
+                "recipient": recipient,
+                "message": message
+            }
+            await self._raw_send(payload)
 
     async def send_typing(self):
         payload = {
@@ -431,53 +429,52 @@ class Client(Ui_MainWindow):
     async def process_data(self, data):
         message = self.decode_data(data)
 
-        if not isinstance(message, dict):
-            return
+        if isinstance(message, dict):
 
-        packet_type = message.get("type")
+            packet_type = message.get("type")
 
-        if self._debug:
-            self.print_local_message(f"RECV {data}", plain=True)
-
-        if packet_type == "message":
-            self.dispatch("message", message)
-
-        elif packet_type == "broadcast":
-            self.dispatch("broadcast", message)
-
-        elif packet_type == "auth":
-            self.dispatch("auth_response", message)
-
-        elif packet_type == "join":
-            self.dispatch("join", message)
-
-        elif packet_type == "quit":
-            self.dispatch("quit", message)
-
-        elif packet_type == "direct_message":
-            self.dispatch("direct_message", message)
-
-        elif packet_type == "user_list":
-            self.dispatch("user_list", message)
-
-        elif packet_type == "typing":
-            self.dispatch("typing", message)
-
-        elif packet_type == "channel_list":
-            self.dispatch("channel_list", message)
-
-        elif packet_type == "default_channel":
-            self.dispatch("default_channel", message)
-
-        elif packet_type == "channel_create":
-            self.dispatch("channel_create", message)
-
-        elif packet_type == "channel_delete":
-            self.dispatch("channel_delete", message)
-
-        else:
             if self._debug:
-                self.print_local_message(f"Unknown Packet Type: {data}", plain=True, warning=True)
+                self.print_local_message(f"RECV {data}", plain=True)
+
+            if packet_type == "message":
+                self.dispatch("message", message)
+
+            elif packet_type == "broadcast":
+                self.dispatch("broadcast", message)
+
+            elif packet_type == "auth":
+                self.dispatch("auth_response", message)
+
+            elif packet_type == "join":
+                self.dispatch("join", message)
+
+            elif packet_type == "quit":
+                self.dispatch("quit", message)
+
+            elif packet_type == "direct_message":
+                self.dispatch("direct_message", message)
+
+            elif packet_type == "user_list":
+                self.dispatch("user_list", message)
+
+            elif packet_type == "typing":
+                self.dispatch("typing", message)
+
+            elif packet_type == "channel_list":
+                self.dispatch("channel_list", message)
+
+            elif packet_type == "default_channel":
+                self.dispatch("default_channel", message)
+
+            elif packet_type == "channel_create":
+                self.dispatch("channel_create", message)
+
+            elif packet_type == "channel_delete":
+                self.dispatch("channel_delete", message)
+
+            else:
+                if self._debug:
+                    self.print_local_message(f"Unknown Packet Type: {data}", plain=True, warning=True)
 
     async def process_command(self, text):
         try:
@@ -607,30 +604,28 @@ class Client(Ui_MainWindow):
     async def command_color(self, msg, color_name, *user_name):
         username = self.find_user(" ".join(user_name))
 
-        if username is None:
+        if username:
+            user = username.lower()
+            await self.user_colors.put(user, color_name)
+
+            self.print_local_message(f"Set color for {username} to {color_name}", success=True)
+
+        else:
             self.print_local_message(f"'{user_name} isn't online", error=True)
-            return
-
-        user = username.lower()
-
-        await self.user_colors.put(user, color_name)
-
-        self.print_local_message(f"Set color for {username} to {color_name}", success=True)
 
     async def command_clear_color(self, user_name, *args):
         username = self.find_user(user_name)
 
-        if username is None:
-            self.print_local_message(f"'{user_name}' isn't online", error=True)
-            return
+        if username:
+            user = username.lower()
 
-        user = username.lower()
-
-        if user in self.user_colors:
-            await self.user_colors.remove(user)
-            self.print_local_message(f"Removed color for {username}", success=True)
+            if user in self.user_colors:
+                await self.user_colors.remove(user)
+                self.print_local_message(f"Removed color for {username}", success=True)
+            else:
+                self.print_local_message(f"No color set for {username}", warning=True)
         else:
-            self.print_local_message(f"No color set for {username}", warning=True)
+            self.print_local_message(f"'{user_name}' isn't online", error=True)
 
     async def command_me(self, msg, *args):
         await self.send_message(f"*{msg}*")
@@ -638,26 +633,27 @@ class Client(Ui_MainWindow):
     async def command_quit(self, quit_message="", *args):
         if quit_message != "":
             await self.send_message(quit_message)
+
         self.print_local_message("Exited", plain=True)
         await self.close(complete=True)
 
     async def command_block(self, username, *args):
         username = self.find_user(" ".join(username))
 
-        if username is None:
-            self.print_local_message("That user isn't online", error=True)
-            return
+        if username:
+            user = username.lower()
 
-        user = username.lower()
+            if user in self.settings.get("blocked_users", []):
+                self.settings.get("blocked_users").remove(user)
+                self.print_local_message(f"Unblocked {username}")
+            else:
+                self.settings.get("blocked_users").append(user)
+                self.print_local_message(f"Blocked {username}")
 
-        if user in self.settings.get("blocked_users", []):
-            self.settings.get("blocked_users").remove(user)
-            self.print_local_message(f"Unblocked {username}")
+            await self.settings.save()
+
         else:
-            self.settings.get("blocked_users").append(user)
-            self.print_local_message(f"Blocked {username}")
-
-        await self.settings.save()
+            self.print_local_message("That user isn't online", error=True)
 
     async def command_blocked(self, msg, *args):
         blocked_users = self.settings.get("blocked_users")
@@ -677,13 +673,17 @@ class Client(Ui_MainWindow):
             self.print_local_message("You can't DM yourself!", error=True)
             return
 
-        if username is None:
-            self.print_local_message("That user isn't online", error=True)
-            return
+        if username:
+            if (username.lower() != self.username.lower()) or (username.lower() == self.username.lower() and self._debug):
+                message = " ".join(message)
+                await self.send_direct_message(username, message)
+                self.print_direct_message("Me", username, message)
 
-        message = " ".join(message)
-        await self.send_direct_message(username, message)
-        self.print_direct_message("Me", username, message)
+            elif self._debug is False:
+                self.print_local_message("You can't DM yourself!", error=True)
+
+        else:
+            self.print_local_message("That user isn't online", error=True)
 
     async def command_clean(self, msg):
         self.clean()
@@ -734,15 +734,14 @@ class Client(Ui_MainWindow):
     async def command_join(self, channel_name, *args):
         channel = self.find_channel(channel_name)
 
-        if channel is None or channel not in self.channel_list:
+        if channel and channel in self.channel_list:
+            self.active_channel = channel
+            self.print_local_message(f"Joined #{channel}", plain=True, success=True)
+
+            self.update_channels()
+            self.update_view()
+        else:
             self.print_local_message("That channel doesn't exist", error=True)
-            return
-
-        self.active_channel = channel
-        self.print_local_message(f"Joined #{channel}", plain=True, success=True)
-
-        self.update_channels()
-        self.update_view()
 
     async def command_r(self, message, *args):
         if self.last_dm in self.user_list:
