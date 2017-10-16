@@ -321,7 +321,10 @@ class Client(Ui_MainWindow):
             text = self.parse_formatting(message)
             timestamp = datetime.now().strftime(time.time_format)
 
-            self.add_text(f"[{paint(timestamp, 'red')}] {paint(author, color)}: {text}", channel)
+            text_color = "white"
+            if f"@{self.username.lower()}" in message:
+                text_color = "deep_orange"
+            self.add_text(f"[{paint(timestamp, 'red')}] {paint(author, color)}: {paint(text, text_color)}", channel)
 
     def print_server_broadcast(self, message):
         fg_color = "a_deep_purple"
