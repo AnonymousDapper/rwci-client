@@ -310,18 +310,18 @@ class Client(Ui_MainWindow):
         if up:
             scrollbar.setValue(scrollbar.minimum())
         else:
+            scrollbar = self.MessageView.verticalScrollBar()
+            
             scrollbar.setValue(scrollbar.maximum())
 
     def print_player_message(self, message, author, channel):
         low_author = author.lower()
-        if low_author in self.settings.get("blocked_users", []):
-            return
+        if low_author not in self.settings.get("blocked_users", []):
+            color = self.user_colors.get(low_author, "white")
+            text = self.parse_formatting(message)
+            timestamp = datetime.now().strftime(time.time_format)
 
-        color = self.user_colors.get(low_author, "white")
-        text = self.parse_formatting(message)
-        timestamp = datetime.now().strftime(time.time_format)
-
-        self.add_text(f"[{paint(timestamp, 'red')}] {paint(author, color)}: {text}", channel)
+            self.add_text(f"[{paint(timestamp, 'red')}] {paint(author, color)}: {text}", channel)
 
     def print_server_broadcast(self, message):
         fg_color = "a_deep_purple"
