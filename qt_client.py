@@ -290,7 +290,7 @@ class Client(Ui_MainWindow):
     def update_channels(self):
         channel_str = "[==] Channels [==]<br /><br />"
 
-        channel_str += "<br />".join(('> ' + f"# {paint(channel_name, 'green')}") if channel_name == self.active_channel else f"# {channel_name}" for channel_name in list(self.channel_list.keys()))
+        channel_str += "<br />".join(f"# &gt; {paint(channel_name, 'green')} &lt;" if channel_name == self.active_channel else f"# {channel_name}" for channel_name in list(self.channel_list.keys()))
 
         self.ChannelView.setHtml(channel_str)
 
