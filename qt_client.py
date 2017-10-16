@@ -296,7 +296,7 @@ class Client(Ui_MainWindow):
 
     # Update user list
     def update_users(self):
-        user_str = "&lt;-&gt; Online Users &lt;-&gt;<br /><br />"
+        user_str = "&lt;--&gt; Online Users &lt;--&gt;<br /><br />"
 
         user_str += "<br />".join(paint(user_name, self.user_colors.get(user_name.lower(), "white")) for user_name in self.user_list)
 
