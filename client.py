@@ -9,7 +9,7 @@ import socket
 
 try:
     import mistune
-    from PyQt5 import QtCore, QtGui, QtWidgets
+    from PyQt5 import QtCore, QtGui, QtWidgets, QtMultimedia
     from quamash import QEventLoop
     import websockets
     from getpass import getpass
@@ -321,7 +321,7 @@ class RWCIClient(Ui_MainWindow):
         self.update_view()
 
     def mentioned_in(self, text):
-        return f"@{self.username.lower()}" in text
+        return f"@{self.username.lower()}" in text.lower()
 
     async def close(self, complete=False):
         self.connect_task.cancel()
@@ -521,7 +521,20 @@ class RWCIClient(Ui_MainWindow):
     # Dispatcher events
 
     async def on_message(self, data):
-        self.print_player_message(data["message"], data["author"], data["channel"])
+        channel = data["channel"]
+        message = data["message"]
+
+        if channel != self.quick_settings["active_channel"]:
+            if self.mentioned_in(message):
+                self.channel_list[channel]["mentioned_in"] = True
+                # self.alert_tone.play()
+
+            else:
+                self.channel_list[channel]["new_messages"] = True
+
+        self.update_channel_list()
+
+        self.print_player_message(message, data["author"], channel)
 
     async def on_broadcast(self, data):
         self.print_server_broadcast(data["message"])
@@ -601,6 +614,8 @@ class RWCIClient(Ui_MainWindow):
 
         self.setupUi(window)
         window.setWindowIcon(QtGui.QIcon("./utils/ui/files/icon.png"))
+
+        # self.alert_tone = QtMultimedia.QSound("./utils/ui/files/alert.wav")
 
         self.MessageView.verticalScrollBar().setStyleSheet(SCROLLBAR_STYLE)
         self.ChannelView.verticalScrollBar().setStyleSheet(SCROLLBAR_STYLE)
@@ -782,6 +797,9 @@ async def command_join(*, channel_name):
 
     if channel and channel in client.channel_list:
         client.quick_settings["active_channel"] = channel
+        client.channel_list[channel]["new_messages"] = False
+        client.channel_list[channel]["mentioned_in"] = False
+
         client.print_local_message(f"Joined #{channel}", plain=True, success=True)
 
         client.update_channel_list()
