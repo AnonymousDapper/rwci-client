@@ -79,7 +79,7 @@ QScrollBar::up-arrow:vertical, QScrollBar::down-arrow:vertical {
  QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
      background: #515151;
  }
- '''
+'''
 
 LINK_EXTRACT = re.compile(r"^(https?|s?ftp|wss?:?)://([^\s/]+)/?")
 

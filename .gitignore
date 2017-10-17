@@ -100,11 +100,9 @@ ENV/
 # mypy
 .mypy_cache/
 
-utils/ui/files/LoginWidget.ui
-utils/ui/files/MainWindow_Channels.ui
+*.ui
 settings.json
 user_colors.json
-qt_user_colors.json
 
 .zip
 
