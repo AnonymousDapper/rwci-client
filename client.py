@@ -698,6 +698,7 @@ async def command_block(*, user_name):
             client.print_local_message(f"Blocked {username}")
 
         await client.settings.save()
+        client.update_user_list()
 
     else:
         client.print_local_message(f"'{user_name}' isn't online", error=True)
