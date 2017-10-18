@@ -66,3 +66,6 @@ class Renderer(mistune.Renderer):
         else:
             return self.autolink(src)
 
+    def header(self, text, level, raw=None):
+        return f"{'#' * level}{text}"
+
