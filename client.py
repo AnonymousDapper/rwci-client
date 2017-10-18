@@ -107,7 +107,7 @@ class TextHistoryHandler(QtWidgets.QWidget):
 
             if key == QtCore.Qt.Key_Up:
                 if self.history_index < (len(self.history) - 1):
-                    self.history_index += 2
+                    self.history_index += 1
                     self.restore_last_line()
 
                 return 1
@@ -513,6 +513,8 @@ class RWCIClient(Ui_MainWindow):
             asyncio.run_coroutine_threadsafe(self.send_message(text), self.loop)
 
         self.MessageField.clear()
+
+        self.history_handler.history_index = 0
 
     async def connect(self):
         self.print_local_message("Attempting connection..", plain=True)
