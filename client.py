@@ -292,9 +292,9 @@ class RWCIClient(Ui_MainWindow):
             if channel_name == self.quick_settings["active_channel"]:
                 channel_str += f"# &gt; {paint(channel_name, 'green')} &lt;<br />"
             elif channel["mentioned_in"]:
-                channel_str += f"# {paint(channel_name, 'a_deep_orange')} !<br />"
+                channel_str += f"# <a href=\"#{channel_name}\" style=\"text-decoration: none\"><span style=\"text-decoration: none; color: #FF3D00\">{channel_name}</span></a> !<br />"
             else:
-                channel_str += f"# {channel_name}{' *' if channel['new_messages'] else ''}<br />"
+                channel_str += f"# <a href=\"#{channel_name}\" style=\"text-decoration: none\"><span style=\"text-decoration: none; color: #EDEDED\">{channel_name}{' *' if channel['new_messages'] else ''}</span></a><br />"
 
         self.ChannelView.setHtml(channel_str)
 
@@ -322,6 +322,12 @@ class RWCIClient(Ui_MainWindow):
 
     def mentioned_in(self, text):
         return f"@{self.username.lower()}" in text.lower()
+
+    def parse_channel_links(self, text):
+        for channel_name in list(self.channel_list.keys()):
+            text = text.replace(f"#{channel_name}", f"<a href=\"#{channel_name}\" style=\"text-decoration: none\"><span style=\" color: #FFC107; text-decoration: none\">#{channel_name}</span></a>")
+
+        return text
 
     async def close(self, complete=False):
         self.connect_task.cancel()
@@ -475,8 +481,6 @@ class RWCIClient(Ui_MainWindow):
                 if self.quick_settings["debug"]:
                     self.print_local_message(f"Unknown packet type: {data}", plain=True, warning=True)
 
-
-
     async def process_command(self, text):
         text = text.strip()
 
@@ -490,6 +494,13 @@ class RWCIClient(Ui_MainWindow):
         self.run_command(command_name, parts[1:])
 
     # Connection functions
+
+    def parse_anchor_url(self, url):
+        url = url.toString()
+        if url.startswith("#"):
+            self.run_command("join", [url.strip("#")])
+        else:
+            QtGui.QDesktopServices.openUrl(QtCore.QUrl(url))
 
     def read_input(self):
         text = self.MessageField.text()
@@ -522,7 +533,7 @@ class RWCIClient(Ui_MainWindow):
 
     async def on_message(self, data):
         channel = data["channel"]
-        message = data["message"]
+        message = self.parse_channel_links(data["message"])
 
         if channel != self.quick_settings["active_channel"]:
             if self.mentioned_in(message):
@@ -624,6 +635,9 @@ class RWCIClient(Ui_MainWindow):
         self.MessageField.installEventFilter(self.history_handler)
         self.MessageField.returnPressed.connect(self.read_input)
         self.MessageField.setFocus()
+
+        self.MessageView.anchorClicked.connect(self.parse_anchor_url)
+        self.ChannelView.anchorClicked.connect(self.parse_anchor_url)
 
         self.connect_task = self.loop.create_task(self.connect())
 
