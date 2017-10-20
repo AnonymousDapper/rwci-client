@@ -391,7 +391,6 @@ class RWCIClient(Ui_MainWindow):
                 text_color = "a_orange"
 
             elapsed = self._get_minutes_elapsed(self.last_message_time, timestamp)
-            print(elapsed)
 
             self.add_text(f"{'<br />...<br />' if elapsed > 2.5 else ''}[{paint(timestamp.strftime(TIME_FORMAT), 'red')}] {paint(author, color)}: {paint(text, text_color)}", channel)
 
