@@ -1,7 +1,6 @@
 import json
 import asyncio
 import sys
-import shlex
 import re
 import os
 import inspect
@@ -84,6 +83,25 @@ QScrollBar::up-arrow:vertical, QScrollBar::down-arrow:vertical {
  }
 '''
 
+LICENSE = '''
+RWCI Client - A client program for the RWCI system in Python and PyQt5
+Copyright (C) 2017 AnonymousDapper
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+'''
+
+
 class TextHistoryHandler(QtWidgets.QWidget):
     def __init__(self, client):
         QtWidgets.QWidget.__init__(self)
@@ -129,6 +147,8 @@ class RWCIClient(Ui_MainWindow):
         self.events = {}
         self.commands = {} # Valid fields are `func`, and `docs`, dict is indexed by `name`
 
+        self.last_message_time = datetime.now()
+
         self.quick_settings = {
             "active_channel": "",
             "default_channel": "",
@@ -151,6 +171,9 @@ class RWCIClient(Ui_MainWindow):
         self.markdown = mistune.Markdown(mistune_renderer, inline=mistune_lexer)
 
         self.history_handler = TextHistoryHandler(self)
+
+        if not any("silent" in arg.lower() for arg in sys.argv):
+            print(LICENSE)
 
     # Command decorator
     def command(self, *args, **kwargs):
@@ -247,6 +270,10 @@ class RWCIClient(Ui_MainWindow):
             self.print_local_message(f"'{func_name}' isn't a valid command", error=True)
 
     # Utility functions
+
+    def _get_minutes_elapsed(self, t_1, t_2):
+        elapsed_seconds = abs(t_2 - t_1).total_seconds()
+        return elapsed_seconds / 60
 
     def _find_in(self, search_in, search):
         for item in search_in:
@@ -357,13 +384,18 @@ class RWCIClient(Ui_MainWindow):
         if low_author not in self.settings.get("blocked_users"):
             color = self.user_colors.get(low_author, "white")
             text = self.parse_formatting(message)
-            timestamp = datetime.now().strftime(TIME_FORMAT)
+            timestamp = datetime.now()
 
             text_color = "white"
             if self.mentioned_in(message):
                 text_color = "a_orange"
 
-            self.add_text(f"[{paint(timestamp, 'red')}] {paint(author, color)}: {paint(text, text_color)}", channel)
+            elapsed = self._get_minutes_elapsed(self.last_message_time, timestamp)
+            print(elapsed)
+
+            self.add_text(f"{'<br />...<br />' if elapsed > 2.5 else ''}[{paint(timestamp.strftime(TIME_FORMAT), 'red')}] {paint(author, color)}: {paint(text, text_color)}", channel)
+
+            self.last_message_time = timestamp
 
     def print_server_broadcast(self, message):
         color = "deep_purple"
@@ -484,11 +516,11 @@ class RWCIClient(Ui_MainWindow):
     async def process_command(self, text):
         text = text.strip()
 
-        try:
-            parts = shlex.split(text[1:])
+        #try:
+        #    parts = shlex.split(text[1:])
 
-        except:
-            parts = text[1:].split()
+        #except:
+        parts = text[1:].split()
 
         command_name = parts[0]
         self.run_command(command_name, parts[1:])
