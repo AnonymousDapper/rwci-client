@@ -9,6 +9,18 @@ You don't need to do anything besides make sure the file is there and you've ins
 
 To install the dependencies, run `pip install -r qt_requirements.txt`
 
+# Client Options
+
+## Debug Mode
+
+Same thing as the command, but enabled on launch.
+`client.py debug`
+
+## Silent Mode
+
+Doesn't print the license text on launch.
+`client.py silent`
+
 # Commands
 
 ## Text Color
