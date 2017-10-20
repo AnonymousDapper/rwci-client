@@ -280,7 +280,6 @@ class RWCIClient(Ui_MainWindow):
             return search
 
         else:
-
             for item in search_in:
                 if item[:len(search)].lower().strip() == search.lower().strip():
                     return item
@@ -358,19 +357,20 @@ class RWCIClient(Ui_MainWindow):
         self.update_view()
 
     def mentioned_in(self, text):
-        return f"@{self.username.lower()}" in text.lower()
+        mention_text = self.mention_regex.match(text)
+        return mention_text is not None
 
     def parse_channel_links(self, text):
         for channel_name in list(self.channel_list.keys()):
             #text = text.replace(f"#{channel_name}", f"<a href=\"#{channel_name}\" style=\"text-decoration: none\"><span style=\" color: #FFC107; text-decoration: none\">#{channel_name}</span></a>")
-            text = re.sub(f"#{channel_name}", f"<a href =\"#{channel_name}\" style=\"text-decoration: none\"><span style=\" color: #FFC107; text-decoration: none\">#{channel_name}</span></a>", flags=re.I)
+            text = re.sub(f"#{channel_name}", f"<a href=\"#{channel_name}\" style=\"text-decoration: none\"><span style=\"color: #FFC107; text-decoration: none\">#{channel_name}</span></a>", text, flags=re.I)
 
         return text
 
     def parse_user_links(self, text):
         for user_name in self.user_list:
             if user_name != self.username:
-                text = re.sub(f"#{user_name}", f"<a href =\"@{user_name}\" style=\"text-decoration: none\"><span style=\" color: #FFC107; text-decoration: none\">@{user_name}</span></a>", flags=re.I)
+                text = re.sub(f"@{user_name}", f"<a href=\"@{user_name}\" style=\"text-decoration: none\"><span style=\"color: #FFC107; text-decoration: none\">@{user_name}</span></a>", text, flags=re.I)
 
         return text
 
@@ -672,6 +672,8 @@ class RWCIClient(Ui_MainWindow):
         self.username = username
         self.password = password
         self.settings = settings
+
+        self.mention_regex = re.compile(fr"@{self.username}\b", flags=re.I)
 
         self.ip = self.settings.get("server_ip")
         self.port = self.settings.get("server_port")
