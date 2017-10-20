@@ -76,7 +76,7 @@ class Ui_MainWindow(object):
         self.OnlineUsersView.setFrameShape(QtWidgets.QFrame.NoFrame)
         self.OnlineUsersView.setFrameShadow(QtWidgets.QFrame.Plain)
         self.OnlineUsersView.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-        self.OnlineUsersView.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
+        self.OnlineUsersView.setTextInteractionFlags(QtCore.Qt.LinksAccessibleByMouse|QtCore.Qt.TextSelectableByMouse)
         self.OnlineUsersView.setOpenLinks(False)
         self.OnlineUsersView.setObjectName("OnlineUsersView")
         self.ChannelView = QtWidgets.QTextBrowser(self.splitter)

@@ -276,9 +276,14 @@ class RWCIClient(Ui_MainWindow):
         return elapsed_seconds / 60
 
     def _find_in(self, search_in, search):
-        for item in search_in:
-            if item[:len(search)].lower().strip() == search.lower().strip():
-                return item
+        if search in search_in:
+            return search
+
+        else:
+
+            for item in search_in:
+                if item[:len(search)].lower().strip() == search.lower().strip():
+                    return item
 
     def find_user(self, name):
         return self._find_in(self.user_list, name)
@@ -329,7 +334,12 @@ class RWCIClient(Ui_MainWindow):
         user_str = "&lt;--&gt; Online Users &lt;--&gt;<br /><br />"
 
         for user in self.user_list:
-            user_str += f"{user}{paint(' X', 'red') if user.lower() in self.settings.get('blocked_users') else ''}<br />"
+
+            if user != self.username:
+                user_str += f"<a href =\"@{user}\" style=\"text-decoration: none\"><span style=\" color: #EDEDED; text-decoration: none\">{user}</span></a>{paint(' X', 'red') if user.lower() in self.settings.get('blocked_users') else ''}<br />"
+
+            else:
+                user_str += f"{user}<br />"
 
         self.OnlineUsersView.setHtml(user_str)
 
@@ -352,7 +362,15 @@ class RWCIClient(Ui_MainWindow):
 
     def parse_channel_links(self, text):
         for channel_name in list(self.channel_list.keys()):
-            text = text.replace(f"#{channel_name}", f"<a href=\"#{channel_name}\" style=\"text-decoration: none\"><span style=\" color: #FFC107; text-decoration: none\">#{channel_name}</span></a>")
+            #text = text.replace(f"#{channel_name}", f"<a href=\"#{channel_name}\" style=\"text-decoration: none\"><span style=\" color: #FFC107; text-decoration: none\">#{channel_name}</span></a>")
+            text = re.sub(f"#{channel_name}", f"<a href =\"#{channel_name}\" style=\"text-decoration: none\"><span style=\" color: #FFC107; text-decoration: none\">#{channel_name}</span></a>", flags=re.I)
+
+        return text
+
+    def parse_user_links(self, text):
+        for user_name in self.user_list:
+            if user_name != self.username:
+                text = re.sub(f"#{user_name}", f"<a href =\"@{user_name}\" style=\"text-decoration: none\"><span style=\" color: #FFC107; text-decoration: none\">@{user_name}</span></a>", flags=re.I)
 
         return text
 
@@ -441,7 +459,7 @@ class RWCIClient(Ui_MainWindow):
             if isinstance(raw_data, dict):
                 data = json.dumps(raw_data)
             if self.quick_settings["debug"]:
-                self.print_local_message(f"SEND {raw_data if raw_data['type'] != 'auth' else 'AUTH [REDACTED]'}")
+                self.print_local_message(f"SEND {raw_data if raw_data['type'] != 'auth' else 'AUTH [REDACTED]'}", plain=True)
 
             await self.ws.send(data)
 
@@ -528,8 +546,13 @@ class RWCIClient(Ui_MainWindow):
 
     def parse_anchor_url(self, url):
         url = url.toString()
+
         if url.startswith("#"):
             self.run_command("join", [url.strip("#")])
+
+        elif url.startswith("@"):
+            self.MessageField.setText(f"/w {url.strip('@')} ")
+
         else:
             QtGui.QDesktopServices.openUrl(QtCore.QUrl(url))
 
@@ -567,6 +590,7 @@ class RWCIClient(Ui_MainWindow):
     async def on_message(self, data):
         channel = data["channel"]
         message = self.parse_channel_links(data["message"])
+        message = self.parse_user_links(message)
 
         if channel != self.quick_settings["active_channel"]:
             if self.mentioned_in(message):
@@ -671,6 +695,7 @@ class RWCIClient(Ui_MainWindow):
 
         self.MessageView.anchorClicked.connect(self.parse_anchor_url)
         self.ChannelView.anchorClicked.connect(self.parse_anchor_url)
+        self.OnlineUsersView.anchorClicked.connect(self.parse_anchor_url)
 
         self.connect_task = self.loop.create_task(self.connect())
 
@@ -859,9 +884,11 @@ async def command_join(*, channel_name):
 @client.command(name="r")
 async def command_r(*, message):
     """/r message"""
+    print(client.user_list, client.quick_settings["last_dm"])
+
     if client.quick_settings["last_dm"] in client.user_list:
-        await client.send_direct_message[client.quick_settings["last_dm"], message]
-        client.print_direct_message("me", client.quick_settings["last_dm"], message)
+        await client.send_direct_message(client.quick_settings["last_dm"], message)
+        client.print_direct_message("Me", client.quick_settings["last_dm"], message)
 
 class LoginHandler(Ui_LoginWindow):
     def __init__(self, window):
