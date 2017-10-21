@@ -290,11 +290,14 @@ class RWCIClient(Ui_MainWindow):
     def find_channel(self, name):
         return self._find_in(list(self.channel_list.keys()), name)
 
-    def clear(self):
+    def clear_messages(self):
         for channel in self.channel_list:
-            channel["html"] = BLANK_HTML
+            self.channel_list[channel]["html"] = BLANK_HTML
+            self.channel_list[channel]["new_messages"] = False
+            self.channel_list[channel]["mentioned_in"] = False
 
         self.update_view()
+        self.update_channel_list()
 
     def parse_formatting(self, text):
         if self.settings.get("should_render_markdown"):
@@ -573,7 +576,7 @@ class RWCIClient(Ui_MainWindow):
     async def connect(self):
         self.print_local_message("Attempting connection..", plain=True)
         try:
-            self.ws = await websockets.client.connect(f"ws://{self.ip}:{self.port}")
+            self.ws = await websockets.client.connect(f"wss://{self.ip}:{self.port}")
 
         except socket.gaierror:
             self.print_local_message(f"Unable to resolve {self.ip}:{self.port}", error=True)
@@ -811,7 +814,7 @@ async def command_w(recipient, *, message):
 @client.command(name="clean")
 async def command_clean():
     """/clean"""
-    client.clean()
+    client.clear_messages()
 
 @client.command(name="eval")
 async def command_eval(*, code):
