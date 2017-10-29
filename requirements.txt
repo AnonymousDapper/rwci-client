@@ -3,4 +3,3 @@ mistune
 PyQt5
 Quamash
 websockets
-getpass
